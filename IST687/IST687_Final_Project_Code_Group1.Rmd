@@ -1,0 +1,1907 @@
+---
+title: "IST 687 Final Project"
+output: html_notebook
+author: James Eakins, Rupesh Ghosh, Sanket Vichare, Chaitali Nautiyal
+---
+----------------------James Eakins's Code-----------------------------------------------------------------------------------------------------------------------------
+```{r} 
+library(dplyr)
+library(ggplot2)
+library(maps)
+library(rgeos)
+library(maptools)
+library(ggmap)
+library(geosphere)
+library(plyr)
+
+#Loading Data 
+survey<- read.csv("C:/Users/james/OneDrive - Syracuse University/Desktop/IST687/Homework/spring19survey.csv")
+summary(survey)
+str(survey)
+
+#Data Statistic prep
+a<-table(survey$Partner.Name, survey$Satisfaction)
+
+a<- as.data.frame(a)
+colnames(a)<-c("Partner.Name", "Satisfaction", "Count")
+
+b<- select(survey, Satisfaction, Airline.Status, Price.Sensitivity, Class, Type.of.Travel,Loyalty, Partner.Code, Partner.Name, Departure.Delay.in.Minutes, Arrival.Delay.in.Minutes, Flight.cancelled, Flight.time.in.minutes, Flight.Distance, Arrival.Delay.greater.5.Mins, Long.Duration.Trip)
+
+
+#Linear Modeling
+m<- lm(formula=Satisfaction ~ Flight.Distance + Flight.time.in.minutes+Long.Duration.Trip+Arrival.Delay.greater.5.Mins, data = b )
+summary(m)
+
+v<- lm(formula=Satisfaction ~ Flight.Distance + Flight.time.in.minutes+Arrival.Delay.greater.5.Mins, data = b )
+summary(v)
+
+survey_1<- select(survey, Satisfaction, Age, Gender, Airline.Status, Loyalty, Price.Sensitivity, Flight.time.in.minutes,Arrival.Delay.in.Minutes,Departure.Delay.in.Minutes)
+cheapseat<- survey[survey$Partner.Name == "Cheapseats Airlines Inc.",]
+west<- survey[survey$Partner.Name == "West Airways Inc.",]
+goingnorth<- survey[survey$Partner.Name == "GoingNorth Airlines Inc.",]
+
+
+west_m<- lm(formula=Satisfaction ~ Gender+Age+Airline.Status+ Loyalty+ Price.Sensitivity, data = west )
+west_m
+summary(west_m)
+
+survey_n<- lm(formula=Satisfaction ~ Flight.time.in.minutes+ Departure.Delay.in.Minutes+ Arrival.Delay.in.Minutes, data = survey_1 )
+survey_n
+summary(survey_n)
+
+survey_m<- lm(formula=as.numeric(Satisfaction) ~ Age+ Gender+Airline.Status+Loyalty+ Price.Sensitivity, data = survey_1 )
+survey_m
+summary(survey_m)
+
+#correlation_matrix
+source("http://www.sthda.com/upload/rquery_cormat.r")
+survey_co<-select(survey, Price.Sensitivity, Age, Satisfaction, Loyalty, Departure.Delay.in.Minutes,Arrival.Delay.in.Minutes,Flight.time.in.minutes )
+rquery.cormat(west_airways,type="full")
+
+#Find the average statisfaction of all airlines
+cheapseat <- a[a$Partner.Name == "Cheapseats Airlines Inc.", ]
+cheapseat$percent <- (cheapseat$Count/sum(cheapseat$Count)) * 100
+
+cheapseat_rating<- ((1 * subset(cheapseat, cheapseat$Satisfaction == '1',select= Count))
++(2 * subset(cheapseat, cheapseat$Satisfaction == '2',select= Count)) 
++(3 * subset(cheapseat, cheapseat$Satisfaction == '3',select= Count)) 
++(4 * subset(cheapseat, cheapseat$Satisfaction == '4',select= Count)) 
++(5 * subset(cheapseat, cheapseat$Satisfaction == '5',select= Count)) ) / sum(cheapseat$Count)
+
+sigma <- a[a$Partner.Name == "Sigma Airlines Inc.", ]
+sigma$percent <- (sigma$Count/sum(sigma$Count)) * 100
+
+sigma_rating<- ((1 * subset(sigma, sigma$Satisfaction == '1',select= Count))
++(2 * subset(sigma, sigma$Satisfaction == '2',select= Count)) 
++(3 * subset(sigma, sigma$Satisfaction == '3',select= Count)) 
++(4 * subset(sigma, sigma$Satisfaction == '4',select= Count)) 
++(5 * subset(sigma, sigma$Satisfaction == '5',select= Count)) ) / sum(sigma$Count)
+
+
+flyfast <- a[a$Partner.Name == "FlyFast Airways Inc.", ]
+flyfast$percent <- (flyfast$Count/sum(flyfast$Count)) * 100
+
+flyfast_rating<- ((1 * subset(flyfast, flyfast$Satisfaction == '1',select= Count))
++(2 * subset(flyfast, flyfast$Satisfaction == '2',select= Count)) 
++(3 * subset(flyfast, flyfast$Satisfaction == '3',select= Count)) 
++(4 * subset(flyfast, flyfast$Satisfaction == '4',select= Count)) 
++(5 * subset(flyfast, flyfast$Satisfaction == '5',select= Count)) ) / sum(flyfast$Count)
+
+northwest <- a[a$Partner.Name == "Northwest Business Airlines Inc.", ]
+northwest$percent <- (northwest$Count/sum(northwest$Count)) * 100
+
+northwest_rating<- ((1 * subset(northwest, northwest$Satisfaction == '1',select= Count))
++(2 * subset(northwest, northwest$Satisfaction == '2',select= Count)) 
++(3 * subset(northwest, northwest$Satisfaction == '3',select= Count)) 
++(4 * subset(northwest, northwest$Satisfaction == '4',select= Count)) 
++(5 * subset(northwest, northwest$Satisfaction == '5',select= Count)) ) / sum(northwest$Count)
+
+paulsmith <- a[a$Partner.Name == "Paul Smith Airlines Inc.", ]
+paulsmith$percent <- (paulsmith$Count/sum(paulsmith$Count)) * 100
+
+paulsmith_rating<- ((1 * subset(paulsmith, paulsmith$Satisfaction == '1',select= Count))
++(2 * subset(paulsmith, paulsmith$Satisfaction == '2',select= Count)) 
++(3 * subset(paulsmith, paulsmith$Satisfaction == '3',select= Count)) 
++(4 * subset(paulsmith, paulsmith$Satisfaction == '4',select= Count)) 
++(5 * subset(paulsmith, paulsmith$Satisfaction == '5',select= Count)) ) / sum(paulsmith$Count)
+
+oursin <- a[a$Partner.Name == "Oursin Airlines Inc.", ]
+oursin$percent <- (oursin$Count/sum(oursin$Count)) * 100
+
+oursin_rating<- ((1 * subset(oursin, oursin$Satisfaction == '1',select= Count))
++(2 * subset(oursin, oursin$Satisfaction == '2',select= Count)) 
++(3 * subset(oursin, oursin$Satisfaction == '3',select= Count)) 
++(4 * subset(oursin, oursin$Satisfaction == '4',select= Count)) 
++(5 * subset(oursin, oursin$Satisfaction == '5',select= Count)) ) / sum(oursin$Count)
+
+enjoy <- a[a$Partner.Name == "EnjoyFlying Air Services", ]
+enjoy$percent <- (enjoy$Count/sum(enjoy$Count)) * 100
+
+enjoy_rating<- ((1 * subset(enjoy, enjoy$Satisfaction == '1',select= Count))
++(2 * subset(enjoy, enjoy$Satisfaction == '2',select= Count)) 
++(3 * subset(enjoy, enjoy$Satisfaction == '3',select= Count)) 
++(4 * subset(enjoy, enjoy$Satisfaction == '4',select= Count)) 
++(5 * subset(enjoy, enjoy$Satisfaction == '5',select= Count)) ) / sum(enjoy$Count)
+
+southeast <- a[a$Partner.Name == "Southeast Airlines Co.", ]
+southeast$percent <- (southeast$Count/sum(southeast$Count)) * 100
+
+southeast_rating<- ((1 * subset(southeast, southeast$Satisfaction == '1',select= Count))
++(2 * subset(southeast, southeast$Satisfaction == '2',select= Count)) 
++(3 * subset(southeast, southeast$Satisfaction == '3',select= Count)) 
++(4 * subset(southeast, southeast$Satisfaction == '4',select= Count)) 
++(5 * subset(southeast, southeast$Satisfaction == '5',select= Count)) ) / sum(southeast$Count)
+
+onlyjet <- a[a$Partner.Name == "OnlyJets Airlines Inc.", ]
+onlyjet$percent <- (onlyjet$Count/sum(onlyjet$Count)) * 100
+
+onlyjet_rating<- ((1 * subset(onlyjet, onlyjet$Satisfaction == '1',select= Count))
++(2 * subset(onlyjet, onlyjet$Satisfaction == '2',select= Count)) 
++(3 * subset(onlyjet, onlyjet$Satisfaction == '3',select= Count)) 
++(4 * subset(onlyjet, onlyjet$Satisfaction == '4',select= Count)) 
++(5 * subset(onlyjet, onlyjet$Satisfaction == '5',select= Count)) ) / sum(onlyjet$Count)
+
+flytosun <- a[a$Partner.Name == "FlyToSun Airlines Inc.", ]
+flytosun$percent <- (flytosun$Count/sum(flytosun$Count)) * 100
+
+flytosun_rating<- ((1 * subset(flytosun, flytosun$Satisfaction == '1',select= Count))
++(2 * subset(flytosun, flytosun$Satisfaction == '2',select= Count)) 
++(3 * subset(flytosun, flytosun$Satisfaction == '3',select= Count)) 
++(4 * subset(flytosun, flytosun$Satisfaction == '4',select= Count)) 
++(5 * subset(flytosun, flytosun$Satisfaction == '5',select= Count)) ) / sum(flytosun$Count)
+
+goingnorth <- a[a$Partner.Name == "GoingNorth Airlines Inc.", ]
+goingnorth$percent <- (goingnorth$Count/sum(goingnorth$Count)) * 100
+
+goingnorth_rating<- ((1 * subset(goingnorth, goingnorth$Satisfaction == '1',select= Count))
++(2 * subset(goingnorth, goingnorth$Satisfaction == '2',select= Count)) 
++(3 * subset(goingnorth, goingnorth$Satisfaction == '3',select= Count)) 
++(4 * subset(goingnorth, goingnorth$Satisfaction == '4',select= Count)) 
++(5 * subset(goingnorth, goingnorth$Satisfaction == '5',select= Count)) ) / sum(goingnorth$Count)
+
+flyhere <- a[a$Partner.Name == "FlyHere Airways", ]
+flyhere$percent <- (flyhere$Count/sum(flyhere$Count)) * 100
+
+flyhere_rating<- ((1 * subset(flyhere, flyhere$Satisfaction == '1',select= Count))
++(2 * subset(flyhere, flyhere$Satisfaction == '2',select= Count)) 
++(3 * subset(flyhere, flyhere$Satisfaction == '3',select= Count)) 
++(4 * subset(flyhere, flyhere$Satisfaction == '4',select= Count)) 
++(5 * subset(flyhere, flyhere$Satisfaction == '5',select= Count)) ) / sum(flyhere$Count)
+
+coolnyoung <- a[a$Partner.Name == "Cool&Young Airlines Inc.", ]
+coolnyoung$percent <- (coolnyoung$Count/sum(coolnyoung$Count)) * 100
+
+coolnyoung_rating<- ((1 * subset(coolnyoung, coolnyoung$Satisfaction == '1',select= Count))
++(2 * subset(coolnyoung, coolnyoung$Satisfaction == '2',select= Count)) 
++(3 * subset(coolnyoung, coolnyoung$Satisfaction == '3',select= Count)) 
++(4 * subset(coolnyoung, coolnyoung$Satisfaction == '4',select= Count)) 
++(5 * subset(coolnyoung, coolnyoung$Satisfaction == '5',select= Count)) ) / sum(coolnyoung$Count)
+
+west <- a[a$Partner.Name == "West Airways Inc.", ]
+west$percent <- (west$Count/sum(west$Count)) * 100
+
+west_rating<- ((1 * subset(west, west$Satisfaction == '1',select= Count))
++(2 * subset(west, west$Satisfaction == '2',select= Count)) 
++(3 * subset(west, west$Satisfaction == '3',select= Count)) 
++(4 * subset(west, west$Satisfaction == '4',select= Count)) 
++(5 * subset(west, west$Satisfaction == '5',select= Count)) ) / sum(west$Count)
+
+#combine all airline satisfaction
+rating1<-data.frame()
+rating1 <- rbind(cheapseat_rating,
+sigma_rating,
+flyfast_rating,
+coolnyoung_rating,
+enjoy_rating,
+goingnorth_rating,
+northwest_rating,
+onlyjet_rating,
+oursin_rating,
+paulsmith_rating,
+southeast_rating,
+west_rating,
+flytosun_rating,
+flyhere_rating
+)
+
+rownames(rating1)<- c("cheapseat", "sigma","flyfast", "coolnyoung", "enjoy","goingnorth","northwest","onlyjet", "oursin", "paulsmith", "southeast","west","flytosun","flyhere")
+colnames(rating1) <- c("rating")
+View(rating1)
+
+airlines <- rep(c("cheapseat", "sigma","flyfast", "coolnyoung", "enjoy","goingnorth","northwest","onlyjet", "oursin", "paulsmith", "southeast","west","flytosun","flyhere"))
+
+ratings<- rating1$rating
+values<-ratings
+mydata<-data.frame(airlines,values)
+is.num <- sapply(mydata, is.numeric)
+mydata[is.num] <- lapply(mydata[is.num], round, 2)
+mydata$variation[(mydata$values> 3.45)]<- "highest"
+mydata$variation[(mydata$values< 3.31)]<- "lowest"
+mydata$variation[(mydata$values> 3.31 & mydata$values< 3.45 )]<- "average"
+
+p <-ggplot(mydata, aes(airlines, values, fill=variation))
+p<- p + ggtitle("Airline Satisfaction")
+p<-p +geom_bar(stat = "identity")+   geom_text(aes(label=values), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =90, hjust =1))
+p<- p+ scale_y_continuous(expand = c(0,0.5), breaks=c(0,1,3.3,3.5))
+p
+
+west_airways<- Survey[survey$Partner.Name =="West Airways Inc.", ]
+west_airways<-na.omit(west_airways)
+
+west_gender<-select(west_airways, Satisfaction, Gender)
+west_gender<-table(west_gender$Satisfaction,west_gender$Gender)
+west_gender<-as.data.frame(west_gender, header=F)
+names(west_gender)<-c("satisfaction","gender","count")
+west_gender$percent<-c(west_gender$count/2567)*100
+west_gender$percent <- lapply(west_gender$percent, round, 2)
+
+p <-ggplot(west_gender, aes(satisfaction,percent, fill=gender))
+p<- p + ggtitle("West Airways Satisfaction")
+p<-p +geom_bar(stat = "identity")
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =0, hjust =1))+ geom_text(aes(label=percent),position=position_stack(vjust=0.5), colour="white")
+p
+
+goingnorth<- survey[survey$Partner.Name =="GoingNorth Airlines Inc.", ]
+goingnorth<-na.omit(goingnorth)
+
+goingnorth_gender<-select(goingnorth, Satisfaction, Gender)
+goingnorth_gender<-table(goingnorth_gender$Satisfaction,goingnorth_gender$Gender)
+goingnorth_gender<-as.data.frame(goingnorth_gender, header=F)
+names(goingnorth_gender)<-c("satisfaction","gender","count")
+goingnorth_gender$percent<-c(goingnorth_gender$count/2291)*100
+goingnorth_gender$percent <- lapply(goingnorth_gender$percent, round, 2)
+
+p <-ggplot(goingnorth_gender, aes(satisfaction,percent, fill=gender))
+p<- p + ggtitle("GoingNorth Satisfaction")
+p<-p +geom_bar(stat = "identity")
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =0, hjust =1))+ geom_text(aes(label=percent),position=position_stack(vjust=0.5), colour="white")
+p
+
+west_status<-select(west_airways, Satisfaction, Airline.Status)
+west_status<-table(west_status$Satisfaction,west_status$Airline.Status)
+west_status<-as.data.frame(west_status, header=F)
+names(west_status)<-c("satisfaction","status","count")
+west_status$percent<-c(west_status$count/2567)*100
+west_status$percent <- lapply(west_status$percent, round, 2)
+
+p <-ggplot(west_status, aes(satisfaction,percent, fill=status))
+p<- p + ggtitle("West Airways Satisfaction")
+p<-p +geom_bar(stat = "identity")
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =0, hjust =1))+ geom_text(aes(label=percent),position=position_stack(vjust=0.5), colour="white")
+p
+
+goingnorth_status<-select(goingnorth, Satisfaction, Airline.Status)
+goingnorth_status<-table(goingnorth_status$Satisfaction,goingnorth_status$Airline.Status)
+goingnorth_status<-as.data.frame(goingnorth_status, header=F)
+names(goingnorth_status)<-c("satisfaction","status","count")
+goingnorth_status$percent<-c(goingnorth_status$count/2291)*100
+goingnorth_status$percent <- lapply(goingnorth_status$percent, round, 2)
+
+p <-ggplot(goingnorth_status, aes(status,percent, fill=satisfaction))
+p<- p + ggtitle("GoingNorth Satisfaction")
+p<-p +geom_bar(stat = "identity")
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =0, hjust =1))+ geom_text(aes(label=percent),position=position_stack(vjust=0.5), colour="white")
+p
+
+createBuckets <- function(vec){
+  q <- quantile(vec, c(0.4, 0.6))
+  vBuckets <- replicate(length(vec), "40-60")
+  vBuckets[vec <= q[1]] <- "Below40"
+  vBuckets[vec > q[2]] <- "Above60"
+  
+  return(vBuckets)
+}
+
+createLBuckets <- function(vec){
+  q <- quantile(vec, c(0.4, 0.6))
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec <= q[1]] <- "Lower_than_40%"
+  vBuckets[vec > q[2]] <- "Higher_than_60%"
+  
+  return(vBuckets)
+}
+
+west_airways<-survey[survey$Partner.Name == "West Airways Inc.", ]
+west_airways<-select(west_airways, Age, Price.Sensitivity)
+age_bucket <- createBuckets(west_airways$Age)
+west_airways<- cbind(west_airways,age_bucket)
+
+west_age<-table(west_airways$Price.Sensitivity, west_airways$age_bucket)
+west_age<-as.data.frame(west_age, header=F)
+names(west_age)<-c("price.sensitivity","age_group", "count")
+west_age$percent<-c(west_age$count/2567)*100
+west_age$percent <- lapply(west_age$percent, round, 2)
+
+west_low<- west_age[west_age$age_group == "Below40",]
+west_avg<- west_age[west_age$age_group == "40-60",]
+west_high<- west_age[west_age$age_group == "Above60",]
+
+p <-ggplot(west_age, aes(age_group,percent, fill=Loyalty))
+p<- p + ggtitle("West Airways Price Sensitivity Below40")
+p<-p +geom_bar(stat = "identity")
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =0, hjust =1))+ geom_text(aes(label=percent),position=position_stack(vjust=0.5), colour="white")
+p
+
+west_airways<-survey[survey$Partner.Name == "West Airways Inc.", ]
+west_airways<-select(west_airways, Age, Satisfaction)
+age_bucket <- createBuckets(west_airways$Age)
+west_airways<- cbind(west_airways,age_bucket)
+
+west_age<-table(west_airways$Satisfaction, west_airways$age_bucket)
+west_age<-as.data.frame(west_age, header=F)
+names(west_age)<-c("satisfaction","age_group", "count")
+west_age$percent<-c(west_age$count/2572)*100
+west_age$percent <- lapply(west_age$percent, round, 2)
+
+west_low<- west_age[west_age$age_group == "Below40",]
+west_avg<- west_age[west_age$age_group == "40-60",]
+west_high<- west_age[west_age$age_group == "Above60",]
+
+p <-ggplot(west_high, aes(age_group,percent, fill=satisfaction))
+p<- p + ggtitle("West Airways Satisfaction Above60")
+p<-p +geom_bar(stat = "identity")
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =0, hjust =1))+ geom_text(aes(label=percent),position=position_stack(vjust=0.5), colour="white")
+p
+
+pie <- p + coord_polar("y", start=0)
+pie
+
+goingnorth_airways<-survey[survey$Partner.Name == "GoingNorth Airlines Inc.", ]
+goingnorth_airways<-select(goingnorth_airways, Age, Satisfaction)
+age_bucket <- createBuckets(goingnorth_airways$Age)
+goingnorth_airways<- cbind(goingnorth_airways,age_bucket)
+
+goingnorth_age<-table(goingnorth_airways$Satisfaction, goingnorth_airways$age_bucket)
+goingnorth_age<-as.data.frame(goingnorth_age, header=F)
+names(goingnorth_age)<-c("satisfaction","age_group", "count")
+goingnorth_age$percent<-c(goingnorth_age$count/2567)*100
+goingnorth_age$percent <- lapply(goingnorth_age$percent, round, 2)
+
+goingnorth_low<- goingnorth_age[goingnorth_age$age_group == "Below40",]
+goingnorth_avg<- goingnorth_age[goingnorth_age$age_group == "40-60",]
+goingnorth_high<- goingnorth_age[goingnorth_age$age_group == "Above60",]
+
+p <-ggplot(goingnorth_high, aes(age_group,percent, fill=Loyalty))
+p<- p + ggtitle("Gingnorth Airways Loyalty Above60")
+p<-p +geom_bar(stat = "identity")
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =0, hjust =1))+ geom_text(aes(label=percent),position=position_stack(vjust=0.5), colour="white")
+p
+
+pie <- p + coord_polar("y", start=0)
+pie
+
+cheapseat_airways<-survey[survey$Partner.Name == "Cheapseats Airlines Inc.", ]
+cheapseat_airways<-select(cheapseat_airways, Age, Satisfaction)
+age_bucket <- createBuckets(cheapseat_airways$Age)
+cheapseat_airways<- cbind(cheapseat_airways,age_bucket)
+
+cheapseat_age<-table(cheapseat_airways$Satisfaction, cheapseat_airways$age_bucket)
+cheapseat_age<-as.data.frame(cheapseat_age, header=F)
+names(cheapseat_age)<-c("satisfaction","age_group", "count")
+cheapseat_age$percent<-c(cheapseat_age$count/39441)*100
+cheapseat_age$percent <- lapply(cheapseat_age$percent, round, 2)
+
+cheapseat_low<- cheapseat_age[cheapseat_age$age_group == "Below40",]
+cheapseat_avg<- cheapseat_age[cheapseat_age$age_group == "40-60",]
+cheapseat_high<- cheapseat_age[cheapseat_age$age_group == "Above60",]
+
+p <-ggplot(cheapseat_high, aes(age_group,percent, fill=satisfaction))
+p<- p + ggtitle("Cheapseats Airlines Satisfaction Above 60")
+p<-p +geom_bar(stat = "identity")
+  theme_minimal()
+p <- p + theme (axis.text.x = element_text(angle =0, hjust =1))+ geom_text(aes(label=percent),position=position_stack(vjust=0.5), colour="white")
+p
+
+
+pie <- p + coord_polar("y", start=0)
+pie
+
+#plotting map for the routes
+gpclibPermit()
+
+fortify.SpatialLinesDataFrame = function(model, data, ...){
+  ldply(model@lines, fortify)
+}
+
+airports<- read.csv("C:/Users/james/OneDrive - Syracuse University/Desktop/IST687/Homework/airports.dat", header =FALSE)
+urbanareasin <- readShapePoly("C:/Users/james/OneDrive - Syracuse University/Desktop/IST687/Homework/ne_10m_urban_areas.shp")
+
+west<- survey[survey$Partner.Name == "West Airways Inc.", ]
+airports<- airports[airports$V4 == "United States", ]
+
+airports<- select(airports,V2, V3, V7,V8)
+names(airports)<- c("name","city","lat","lon")
+
+west$Orgin.City <- gsub("(.*),.*", "\\1", west$Orgin.City)
+west$Destination.City <- gsub("(.*),.*", "\\1", west$Destination.City)
+
+west_route<- select(west, Orgin.City, Destination.City)
+west_route<- unique(west_route)
+
+west_org<- select(west_route, Orgin.City)
+names(west_org)<- c("city")
+west_org<- join(west_org, airports)
+west_org<-unique(west_org)
+west_org<-select(west_org, city, lat, lon)
+names(west_org)<- c("to","lat1", "lon1")
+
+west_dest<- select(west_route, Destination.City)
+names(west_dest)<- c("city")
+west_dest<- join(west_dest, airports)
+west_dest<- unique(west_dest)
+west_dest<- na.omit(west_dest)
+west_dest<- select(west_dest, city, lat, lon)
+names(west_dest)<- c("from", "lat2", "lon2")
+
+
+west_route<- cbind(west_org,west_dest )
+west_route$group<-1
+west_route<-west_route[west_route$to != "Columbus" , ]
+west_route<-west_route[west_route$from != "Columbus" , ]
+west_route<-west_route[west_route$to != "Minot" , ]
+west_route<-west_route[west_route$from != "Minot" , ]
+
+cheapseat<- survey[survey$Partner.Name == "Cheapseats Airlines Inc.", ]
+
+cheapseat$Orgin.City <- gsub("(.*),.*", "\\1", cheapseat$Orgin.City)
+cheapseat$Destination.City <- gsub("(.*),.*", "\\1", cheapseat$Destination.City)
+
+cheapseat_route<- select(cheapseat, Orgin.City, Destination.City)
+cheapseat_route<- unique(cheapseat_route)
+
+cheapseat_org<- select(cheapseat_route, Orgin.City)
+names(cheapseat_org)<- c("city")
+cheapseat_org<- join(cheapseat_org, airports)
+cheapseat_org<-unique(cheapseat_org)
+cheapseat_org<- na.omit(cheapseat_org)
+cheapseat_org<-select(cheapseat_org, city, lat, lon)
+names(cheapseat_org)<- c("to","lat1", "lon1")
+
+cheapseat_dest<- select(cheapseat_route, Destination.City)
+names(cheapseat_dest)<- c("city")
+cheapseat_dest<- join(cheapseat_dest, airports)
+cheapseat_dest<- unique(cheapseat_dest)
+cheapseat_dest<- na.omit(cheapseat_dest)
+cheapseat_dest<- select(cheapseat_dest, city, lat, lon)
+names(cheapseat_dest)<- c("from", "lat2", "lon2")
+
+cheapseat_route<- cbind(cheapseat_org,cheapseat_dest )
+
+cheapseat_route<-cheapseat_route[cheapseat_route$to != "Columbus" , ]
+cheapseat_route<-cheapseat_route[cheapseat_route$from != "Columbus" , ]
+cheapseat_route<-cheapseat_route[cheapseat_route$to != "Minot" , ]
+cheapseat_route<-cheapseat_route[cheapseat_route$from != "Minot" , ]
+cheapseat_route$group<-3
+
+goingnorth<- survey[survey$Partner.Name == "GoingNorth Airlines Inc.", ]
+
+goingnorth$Orgin.City <- gsub("(.*),.*", "\\1", goingnorth$Orgin.City)
+goingnorth$Destination.City <- gsub("(.*),.*", "\\1", goingnorth$Destination.City)
+
+goingnorth_route<- select(goingnorth, Orgin.City, Destination.City)
+goingnorth_route<- unique(goingnorth_route)
+
+goingnorth_org<- select(goingnorth_route, Orgin.City)
+names(goingnorth_org)<- c("city")
+goingnorth_org<- join(goingnorth_org, airports)
+goingnorth_org<-unique(goingnorth_org)
+goingnorth_org<- na.omit(goingnorth_org)
+goingnorth_org<-select(goingnorth_org, city, lat, lon)
+names(goingnorth_org)<- c("to","lat1", "lon1")
+goingnorth_org<-goingnorth_org[sample(NROW(goingnorth_org), NROW(goingnorth_org)*(1 - 0.09)),] 
+
+goingnorth_dest<- select(goingnorth_route, Destination.City)
+names(goingnorth_dest)<- c("city")
+goingnorth_dest<- join(goingnorth_dest, airports)
+goingnorth_dest<- unique(goingnorth_dest)
+goingnorth_dest<- na.omit(goingnorth_dest)
+goingnorth_dest<- select(goingnorth_dest, city, lat, lon)
+names(goingnorth_dest)<- c("from", "lat2", "lon2")
+
+goingnorth_route<- cbind(goingnorth_org,goingnorth_dest )
+goingnorth_route$group<- 2
+goingnorth_route<-goingnorth_route[goingnorth_route$to != "Minot" , ]
+goingnorth_route<-goingnorth_route[goingnorth_route$from != "Minot" , ]
+goingnorth_route<-goingnorth_route[goingnorth_route$to != "Columbus" , ]
+goingnorth_route<-goingnorth_route[goingnorth_route$from != "Columbus" , ]
+
+all.route<- cheapseat_route
+
+all.route<-all.route[all.route$to != "Salt Lake City",]
+all.route<-all.route[all.route$from != "Salt Lake City",]
+all.route<-all.route[all.route$to != "Honolulu" , ]
+all.route<-all.route[all.route$from != "Honolulu" , ]
+all.route<-all.route[all.route$to != "Kona" , ]
+all.route<-all.route[all.route$from != "Kona" , ]
+all.route<-all.route[all.route$to != "Hilo" , ]
+all.route<-all.route[all.route$from != "Hilo" , ]
+all.route<-all.route[all.route$to != "Kahului" , ]
+all.route<-all.route[all.route$from != "Lihue" , ]
+
+#write.csv(all.route, "C:/Users/james/OneDrive - Syracuse University/Desktop/IST687/Homework/all_route.csv")
+routes = gcIntermediate(all.route[,c('lon1', 'lat1')], all.route[,c('lon2', 'lat2')], 200, breakAtDateLine = FALSE, addStartEnd = TRUE, sp=TRUE)
+
+fortifiedroutes = fortify.SpatialLinesDataFrame(routes) 
+
+routes_count = data.frame( 'id'=1:nrow(all.route), 'Cities'=all.route$from)
+greatcircles = merge(fortifiedroutes, routes_count, all.x=T, by='id')
+
+worldmap = map_data ("state")
+
+wrld<-c(geom_polygon(aes(long,lat,group=group), size = 0.1, colour= "#000000", 
+                     fill="#006400", alpha=0.8, data=worldmap))
+
+ggplot() + 
+wrld +
+
+geom_line(aes(long,lat,group=id, color= Cities), alpha = 0.5, size=0.1, data= greatcircles) + 
+theme(panel.background = element_rect(fill='#00001C',colour='#00001C'), panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  theme(legend.position = "none")
+
+```
+
+--------------------------RUPESH Ghosh's COde-----------------------------------------------------------------------------------------------------------------------
+```{r}
+setwd("C:/Users/Rupesh/Desktop/IST687/Project")
+
+#Considering Goingnorth, Cheapseats and west airlines
+
+#Reading the Data
+dataset <- read.csv("spring19survey.csv")
+
+#Cleaning Data
+cleanedDataset <- dataset
+View(cleanedDataset)
+which(is.na(dataset$Departure.Delay.in.Minutes))
+
+cleanedDataset$Departure.Delay.in.Minutes <- ifelse(is.na(cleanedDataset$Departure.Delay.in.Minutes) & cleanedDataset$Flight.cancelled == "Yes", 9999, cleanedDataset$Departure.Delay.in.Minutes)
+cleanedDataset$Arrival.Delay.in.Minutes <- ifelse(is.na(cleanedDataset$Arrival.Delay.in.Minutes) & cleanedDataset$Flight.cancelled == "Yes", 9999, cleanedDataset$Arrival.Delay.in.Minutes)
+cleanedDataset$Flight.time.in.minutes <- ifelse(is.na(cleanedDataset$Flight.time.in.minutes) & cleanedDataset$Flight.cancelled == "Yes", 9999, cleanedDataset$Flight.time.in.minutes)
+cleanedDataset <- na.omit(cleanedDataset)
+
+str(dataset)
+
+summary(cleanedDataset)
+str(cleanedDataset)
+
+which(is.na(cleanedDataset$Departure.Delay.in.Minutes)) #Checking Na's
+
+cleanedDataset$Satisfaction <- as.numeric(as.character(cleanedDataset$Satisfaction)) #Changing to numeric
+View(cleanedDataset)
+
+cleanedDataset<- na.omit(cleanedDataset) #Omitting Na's
+str(cleanedDataset$Satisfaction)
+
+#Applying linear modelling
+
+linearModel <- lm(formula = as.numeric(Satisfaction) ~ . , data = cleanedDataset)
+summary(linearModel)
+linearModel
+
+linearModel1 <- lm(formula = as.numeric(Satisfaction) ~ Airline.Status + Age + Gender + Price.Sensitivity + Year.of.First.Flight + Flights.Per.Year + Type.of.Travel + Shopping.Amount.at.Airport +Eating.and.Drinking.at.Airport + Class + Scheduled.Departure.Hour + Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes + Flight.cancelled + Flight.time.in.minutes + Flight.Distance + Arrival.Delay.greater.5.Mins, data = cleanedDataset)
+summary(linearModel1)
+linearModel1
+
+#Bucketing by satisfaction rating : High >3 , Average = 3, Low < 3
+
+createBucketsSurvey <- function(vec) {
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec > 3] <- "High"
+  vBuckets[vec <= 2] <- "Low"
+  return(vBuckets)
+}
+
+NewBuckets <- function(vec) {
+  q <- quantile(vec, c(0.4, 0.6))
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec <= q[1]] <- "Low"
+  vBuckets[vec > q[2]] <- "High"
+  return(vBuckets)
+}
+
+Bucketing <- function(a){
+  Satisfaction <- createBucketsSurvey(a$Satisfaction)
+  head(Satisfaction) 
+  Airline.Status <- a$Airline.Status
+  Age <- NewBuckets(a$Age)
+  head(Age)
+  Gender <- a$Gender
+  Price.Sensitivity <- createBucketsSurvey(a$Price.Sensitivity)
+  head(Price.Sensitivity)
+  Year.of.First.Flight <- NewBuckets(a$Year.of.First.Flight)
+  head(Year.of.First.Flight)
+  Flights.Per.Year <- NewBuckets(a$Flights.Per.Year)
+  Total.Freq.Flyer.Accts <- createBucketsSurvey(a$Total.Freq.Flyer.Accts)
+  Type.of.Travel <- a$Type.of.Travel
+  Loyalty <- createBucketsSurvey(a$Loyalty)
+  Shopping.Amount.at.Airport <- NewBuckets(a$Shopping.Amount.at.Airport)
+  Eating.and.Drinking.at.Airport <- NewBuckets(a$Eating.and.Drinking.at.Airport)
+  Class <- a$Class
+  Day.of.Month <- NewBuckets(a$Day.of.Month)
+  Flight.date <- a$Flight.date
+  Partner.Code <- a$Partner.Code
+  head(Partner.Code)
+  Partner.Name <- a$Partner.Name
+  # Orgin.City, Origin.State, Destination.City, Destination.State don't know
+  Origin.City <- a$Orgin.City
+  Origin.State <- a$Origin.State
+  Destination.State <- a$Destination.State
+  Destination.City <- a$Destination.City
+  Scheduled.Departure.Hour <- NewBuckets(a$Scheduled.Departure.Hour)
+  head(Scheduled.Departure.Hour)
+  Departure.Delay.in.Minutes <- NewBuckets(a$Departure.Delay.in.Minutes)
+  head(Departure.Delay.in.Minutes)
+  Arrival.Delay.in.Minutes <- NewBuckets(a$Arrival.Delay.in.Minutes)
+  head(Arrival.Delay.in.Minutes)
+  Flight.cancelled <- a$Flight.cancelled
+  Flight.time.in.minutes <- NewBuckets(a$Flight.time.in.minutes)
+  head(Flight.time.in.minutes)
+  Flight.Distance <- NewBuckets(a$Flight.Distance)
+  head(Flight.Distance)
+  Arrival.Delay.greater.5.Mins <- a$Arrival.Delay.greater.5.Mins
+  
+  df <- data.frame(Satisfaction, Airline.Status, Age, Gender, Price.Sensitivity, Year.of.First.Flight,
+                   Flights.Per.Year, Total.Freq.Flyer.Accts, Type.of.Travel, Loyalty,
+                   Shopping.Amount.at.Airport, Eating.and.Drinking.at.Airport, Class, Flight.date, Day.of.Month,
+                   Partner.Code, Partner.Name, Scheduled.Departure.Hour, Departure.Delay.in.Minutes, Arrival.Delay.in.Minutes,
+                   Flight.cancelled, Flight.time.in.minutes, Flight.Distance, Arrival.Delay.greater.5.Mins,Origin.City,Origin.State,Destination.City,Destination.State)
+  View(df)
+  return(df)
+}
+ 
+
+# Creating Subset Dataset 
+
+install.packages("gdata")
+library(gdata)
+
+
+#Removing whitespace
+cleanedDataset$Airline.Name <- trim(cleanedDataset$Partner.Name)
+CheapseatsAirlineDF <- cleanedDataset[which(cleanedDataset$Partner.Name=="Cheapseats Airlines Inc."),]
+View(CheapseatsAirlineDF)
+CheapseatsAirlineDF1<-CheapseatsAirlineDF
+dfAir1<-CheapseatsAirlineDF1
+str(CheapseatsAirlineDF)
+summary(CheapseatsAirlineDF)
+
+table(cleanedDataset$Partner.name)
+
+CheapseatsAirlineDF <- Bucketing(CheapseatsAirlineDF)
+View(CheapseatsAirlineDF)
+
+
+FullDataset <- Bucketing(cleanedDataset)
+View(FullDataset)
+
+CheapSeatsdataset <- CheapseatsAirlineDF
+View(CheapseatsAirlineDF)
+
+
+# Linear Model For complete Data Set 
+#Find significant Columns
+linearModel2 <- lm(formula = as.numeric(Satisfaction) ~  Gender + Type.of.Travel + Class + Scheduled.Departure.Hour + Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes + Flight.cancelled + Flight.time.in.minutes + Flight.Distance + Arrival.Delay.greater.5.Mins, data = FullDataset)
+summary(linearModel2)
+linearModel2
+
+# Linear Model For Cheapseat Airline Data Set
+
+cheapseats<- CheapseatsAirlineDF[-16:-17] #Removing 2 factor data
+
+linearModel3 <- lm(formula = as.numeric(Satisfaction) ~  Gender + Type.of.Travel + Class + Scheduled.Departure.Hour + Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes + Flight.cancelled + Flight.time.in.minutes + Flight.Distance + Arrival.Delay.greater.5.Mins, data = cheapseats)
+summary(linearModel3)
+linearModel3
+
+
+# Observation from Linear Modelling 
+# Following columns play a Significant role in improving Customer Satisfaction for Cheapseat Airlines. 
+
+lm1 <- lm(formula= as.numeric(Satisfaction)~Arrival.Delay.greater.5.Mins , data = CheapseatsAirlineDF)
+summary(lm1)
+lm1
+
+lm2 <- lm(formula= as.numeric(Satisfaction)~Airline.Status , data = CheapseatsAirlineDF)
+summary(lm2)
+lm2
+
+lm3 <- lm(formula= as.numeric(Satisfaction)~ Class , data = CheapseatsAirlineDF)
+summary(lm3)
+lm3
+
+lm4 <- lm(formula= as.numeric(Satisfaction)~ Type.of.Travel , data = CheapseatsAirlineDF)
+summary(lm4)
+lm4
+
+lm5 <- lm(formula= as.numeric(Satisfaction)~Flight.cancelled , data = CheapseatsAirlineDF)
+summary(lm5)
+lm5
+
+# KSVM MODEL
+
+install.packages("kernlab")
+library(kernlab)
+
+createBucketsSurveya <- function(vec) {
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec >= 3] <- "Happy"
+  vBuckets[vec < 3] <- "unHappy"
+  return(vBuckets)
+}
+
+dfAir1<- CheapseatsAirlineDF1
+
+dfAir1$SatHuH <- createBucketsSurveya(as.numeric(dfAir1$Satisfaction))
+View(dfAir1)
+
+dfAirF <- subset(dfAir1, SatHuH == "Happy" | SatHuH == "unHappy")
+dfAirF
+table(dfAirF$SatHuH)
+
+dim(dfAirF)
+randIndex <- sample(1:dim(dfAirF)[1])
+head(randIndex)
+
+cutPoint2_3 <- floor(2 * dim(dfAirF)[1]/3)
+cutPoint2_3
+
+trainData <- dfAirF[randIndex[1:cutPoint2_3],]
+testData <- dfAirF[randIndex[(cutPoint2_3 + 1):dim(dfAir1)[1]],]
+
+dim(trainData)
+dim(testData)
+
+modelKs<-ksvm(SatHuH ~.,data=trainData, kernel="rbfdot", kpar="automatic", C=5, cross=3, prob.model =TRUE)
+View(modelKs)
+modelKs
+
+#Support Vector Machine object of class "ksvm" 
+
+#SV type: C-svc  (classification) 
+#parameter : cost C = 5 
+
+#Gaussian Radial Basis kernel function. 
+#Hyperparameter : sigma =  0.0286805756932528 
+
+#Number of Support Vectors : 1185 
+
+#Objective Function Value : -220.9678 
+#Training error : 0 
+#3Cross validation error : 0.000153 
+#Probability model included. 
+
+modelKs1<-ksvm(SatHuH ~ Airline.Status+Age+ Type.of.Travel +Arrival.Delay.greater.5.Mins+Class+Flight.cancelled,data=trainData, kernel="rbfdot", kpar="automatic", C=5, cross=3, prob.model =TRUE)
+summary(modelKs1)
+modelKs1
+
+#Support Vector Machine object of class "ksvm" 
+
+#SV type: C-svc  (classification) 
+#parameter : cost C = 5 
+
+#Gaussian Radial Basis kernel function. 
+#Hyperparameter : sigma =  0.293085869430216 
+
+#Number of Support Vectors : 7229 
+
+#Objective Function Value : -31275.62 
+#Training error : 0.118546 
+#Cross validation error : 0.120262 
+#Probability model included. 
+
+svmPred<-predict(modelKs,testData,type="votes")
+head(svmPred)
+
+svmPred1<-predict(modelKs1,testData,type="votes")
+compTable<- data.frame(testData$SatHuH,svmPred[2,])
+cm1<-table(compTable)
+cm1
+
+#svmPred.2...
+#testData.SatHuH     0     1
+#Happy             10337   0
+#unHappy             0   2776
+
+compTable1<- data.frame(testData$SatHuH,svmPred1[2,])
+#Confusion Matrix
+cm2<-table(compTable1)
+cm2
+#svmPred1.2...
+#testData.SatHuH     0     1
+#Happy            10246    91
+#unHappy            1442  1334
+
+#Confusion Matrix
+ES1<- cm1[1,2]+cm1[2,1]
+ES2<- cm2[1,2]+cm2[2,1]
+
+er1<- ES1/sum(cm1)*100
+er1
+# 0
+er2<- ES2/sum(cm2)*100
+er2
+#11.69069
+
+
+library(arules)
+library(arulesViz)
+
+ruleDF1 <- data.frame(CheapseatsAirlineDF$Satisfaction, CheapseatsAirlineDF$Airline.Status, CheapseatsAirlineDF$Age, CheapseatsAirlineDF$Gender, CheapseatsAirlineDF$Price.Sensitivity, CheapseatsAirlineDF$Year.of.First.Flight, 
+                      CheapseatsAirlineDF$Flights.Per.Year, CheapseatsAirlineDF$Total.Freq.Flyer.Accts, CheapseatsAirlineDF$Type.of.Travel, CheapseatsAirlineDF$Loyalty,
+                      CheapseatsAirlineDF$Shopping.Amount.at.Airport, CheapseatsAirlineDF$Eating.and.Drinking.at.Airport, CheapseatsAirlineDF$Class, CheapseatsAirlineDF$Day.of.Month,
+                      CheapseatsAirlineDF$Scheduled.Departure.Hour, CheapseatsAirlineDF$Departure.Delay.in.Minutes, CheapseatsAirlineDF$Arrival.Delay.in.Minutes,
+                      CheapseatsAirlineDF$Flight.cancelled, CheapseatsAirlineDF$Flight.time.in.minutes, CheapseatsAirlineDF$Flight.Distance, CheapseatsAirlineDF$Arrival.Delay.greater.5.Mins)
+ruleX <- as(ruleDF1, "transactions")
+ruleX
+
+ruleset <- apriori(ruleX, parameter = list(support=0.30,confidence=0.30,maxtime=10, maxlen=30),appearance = list(default="lhs", rhs=("CheapseatsAirlineDF.Satisfaction=High")))
+ruleset <- sort(ruleset, decreasing = TRUE, by="lift")
+inspect(ruleset) 
+summary(CheapseatsAirlineDF)
+
+
+ruleDF2 <- data.frame(CheapseatsAirlineDF$Satisfaction, CheapseatsAirlineDF$Airline.Status, CheapseatsAirlineDF$Class, CheapseatsAirlineDF$Day.of.Month,
+                      CheapseatsAirlineDF$Flight.cancelled, CheapseatsAirlineDF$Arrival.Delay.greater.5.Mins)
+ruleX <- as(ruleDF2, "transactions")
+ruleX
+
+ruleset <- apriori(ruleX, parameter = list(support=0.30,confidence=0.30,maxtime=10, maxlen=30),appearance = list(default="lhs", rhs=("CheapseatsAirlineDF.Satisfaction=High")))
+ruleset <- sort(ruleset, decreasing = TRUE, by="lift")
+inspect(ruleset)
+summary(CheapseatsAirlineDF)
+
+#for ggmaps
+
+install.packages("sqldf")
+library(sqldf)
+
+install.packages("Rcpp") #Installing package Rcpp
+library(Rcpp) #Using the library
+
+install.packages("ggplot2") #Installing package ggplot2
+library(ggplot2) #Using the library
+
+install.packages("ggmap") #Installing package ggmap
+library(ggmap) #Using the library
+
+install.packages("maps") #Installing package maps
+library(maps) #Using the library
+
+install.packages("mapdata") #Installing package mapdata
+library(mapdata) #Using the library
+
+install.packages("mapproj") #Installing package mapproj
+library(mapproj) #Using the library
+
+
+View(dfAir1)
+summary(dfAir1)
+
+
+#Removing 9999 Values which were introduced for removing Na's
+sqldf(' select count("Arrival.Delay.in.Minutes") from dfAir1 where "Arrival.Delay.in.Minutes" = 9999')
+dfAirif<- dfAir1[dfAir1$Arrival.Delay.in.Minutes!=9999,]
+dfAir1<- dfAirif
+
+#extracting data form the dataset for destination and average arrival in delay
+statesDelay<- sqldf('select "Destination.State" as "stateName", avg("Arrival.Delay.in.Minutes") as "adih",avg("Satisfaction") as "AverageSatisfaction"  from dfAir1 group by "Destination.State"')
+
+#taking and merging default system data with our dataset
+area <- state.area
+latlong<- state.center
+stateName<- state.name
+mergeDf<- data.frame(stateName,latlong,area)
+
+fds<- merge(mergeDf,statesDelay, by='stateName')
+
+#using lower case for stateName
+fds$stateName<-tolower(fds$stateName)
+
+
+
+us <- map_data("state")
+
+
+#ggmaps
+mapplot<-ggplot(fds , aes(map_id=stateName))
+mapplot<- mapplot + geom_map(map = us,aes(fill=fds$AverageSatisfaction),color="white") + guides(fill=guide_legend(title="Average satisfaction"))
+mapplot<- mapplot + expand_limits(x= fds$x,y=fds$y)
+mapplot<- mapplot + geom_point(data=fds, aes(x=fds$x,y=fds$y,size=fds$adih), color ="white")+ scale_size(name="Avg Delay in Minutes")
+mapplot<- mapplot + geom_text( data=fds, hjust=0.5, vjust=-0.5, aes(x=x, y=y, label=toupper(stateName)), colour="gold", size=2 )
+mapplot<- mapplot + coord_map() + ggtitle("Average Delay in Minutes for Cheapseats")+ xlab("Longitude") + ylab("Latitude")
+mapplot
+
+
+#####################################################################################################################################################################3
+
+#West Airways
+
+install.packages("gdata")
+library(gdata)
+
+cleanedDataset$Airline.Name <- trim(cleanedDataset$Partner.Name)
+WestAirlineDF <- cleanedDataset[which(cleanedDataset$Partner.Name=="West Airways Inc."),]
+View(WestAirlineDF)
+WestAirlineDF1<-WestAirlineDF
+dfAir1<-WestAirlineDF1
+str(WestAirlineDF)
+summary(WestAirlineDF)
+
+table(cleanedDataset$Partner.name)
+
+WestAirlineDF <- Bucketing(WestAirlineDF)
+View(WestAirlineDF)
+
+
+FullDataset <- Bucketing(cleanedDataset)
+View(FullDataset)
+
+WestDataset <- WestAirlineDF
+View(WestAirlineDF)
+
+
+# Linear Model For complete Data Set 
+#Find significant Columns
+linearModel2 <- lm(formula = as.numeric(Satisfaction) ~  Gender + Type.of.Travel + Class + Scheduled.Departure.Hour + Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes + Flight.cancelled + Flight.time.in.minutes + Flight.Distance + Arrival.Delay.greater.5.Mins, data = FullDataset)
+summary(linearModel2)
+linearModel2
+
+# Linear Model For Cheapseat Airline Data Set
+
+West<- WestAirlineDF[-16:-17] #Removing 2 factor data
+
+linearModel3 <- lm(formula = as.numeric(Satisfaction) ~  Gender + Type.of.Travel + Class + Scheduled.Departure.Hour + Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes + Flight.time.in.minutes + Flight.Distance + Arrival.Delay.greater.5.Mins, data = West)
+summary(linearModel3)
+linearModel3
+
+
+# Observation from Linear Modelling 
+# Following columns play a Significant role in improving Customer Satisfaction for Cheapseat Airlines. 
+
+lm1 <- lm(formula= as.numeric(Satisfaction)~Arrival.Delay.greater.5.Mins , data = WestAirlineDF)
+summary(lm1)
+lm1
+
+lm2 <- lm(formula= as.numeric(Satisfaction)~Airline.Status , data = WestAirlineDF)
+summary(lm2)
+lm2
+
+lm3 <- lm(formula= as.numeric(Satisfaction)~ Class , data = WestAirlineDF)
+summary(lm3)
+lm3
+
+lm4 <- lm(formula= as.numeric(Satisfaction)~ Type.of.Travel , data = WestAirlineDF)
+summary(lm4)
+lm4
+
+lm5 <- lm(formula= as.numeric(Satisfaction)~Flight.cancelled , data = WestAirlineDF)
+summary(lm5)
+lm5
+
+#No Flights cancelled for West Airways
+
+# KSVM MODEL
+
+install.packages("kernlab")
+library(kernlab)
+
+
+createBucketsSurveya <- function(vec) {
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec >= 3] <- "Happy"
+  vBuckets[vec < 3] <- "unHappy"
+  return(vBuckets)
+}
+
+dfAir1<- WestAirlineDF1
+
+dfAir1$SatHuH <- createBucketsSurveya(as.numeric(dfAir1$Satisfaction))
+View(dfAir1)
+
+dfAirF <- subset(dfAir1, SatHuH == "Happy" | SatHuH == "unHappy")
+dfAirF
+table(dfAirF$SatHuH)
+
+#Happy unHappy 
+#2158     409 
+
+dim(dfAirF)
+randIndex <- sample(1:dim(dfAirF)[1])
+head(randIndex)
+
+cutPoint2_3 <- floor(2 * dim(dfAirF)[1]/3)
+cutPoint2_3
+
+trainData <- dfAirF[randIndex[1:cutPoint2_3],]
+testData <- dfAirF[randIndex[(cutPoint2_3 + 1):dim(dfAir1)[1]],]
+
+dim(trainData)
+dim(testData)
+
+modelKs<-ksvm(SatHuH ~.,data=trainData, kernel="rbfdot", kpar="automatic", C=5, cross=3, prob.model =TRUE)
+View(modelKs)
+modelKs
+
+#Support Vector Machine object of class "ksvm" 
+
+#SV type: C-svc  (classification) 
+#parameter : cost C = 5 
+
+#Gaussian Radial Basis kernel function. 
+#Hyperparameter : sigma =  0.0328589160581357 
+
+#Number of Support Vectors : 267 
+
+#Objective Function Value : -83.43 
+#Training error : 0 
+#Cross validation error : 0.001752 
+#Probability model included. 
+
+modelKs1<-ksvm(SatHuH ~ Airline.Status+Age+ Type.of.Travel +Arrival.Delay.greater.5.Mins+Class+Flight.cancelled,data=trainData, kernel="rbfdot", kpar="automatic", C=5, cross=3, prob.model =TRUE)
+summary(modelKs1)
+modelKs1
+
+#Support Vector Machine object of class "ksvm" 
+
+#SV type: C-svc  (classification) 
+#parameter : cost C = 5 
+
+#Gaussian Radial Basis kernel function. 
+#Hyperparameter : sigma =  0.300602776284569 
+
+#Number of Support Vectors : 533 
+
+#Objective Function Value : -2015.988 
+#Training error : 0.1128 
+#Cross validation error : 0.123908 
+#Probability model included. 
+
+svmPred<-predict(modelKs,testData,type="votes")
+head(svmPred)
+
+svmPred1<-predict(modelKs1,testData,type="votes")
+compTable<- data.frame(testData$SatHuH,svmPred[2,])
+cm1<-table(compTable)
+cm1
+
+#testData.SatHuH   0   1
+#Happy   714   0
+#unHappy   0 142
+
+
+compTable1<- data.frame(testData$SatHuH,svmPred1[2,])
+#Confusion Matrix
+cm2<-table(compTable1)
+cm2
+
+#testData.SatHuH   0   1
+#Happy   695  19
+#unHappy  89  53
+
+#Confusion Matrix
+ES1<- cm1[1,2]+cm1[2,1]
+ES2<- cm2[1,2]+cm2[2,1]
+
+er1<- ES1/sum(cm1)*100
+er1
+# 0
+er2<- ES2/sum(cm2)*100
+er2
+#[1] 12.61682
+
+
+
+library(arules)
+library(arulesViz)
+
+ruleDF1 <- data.frame(WestAirlineDF$Satisfaction, WestAirlineDF$Airline.Status, WestAirlineDF$Age, WestAirlineDF$Gender, WestAirlineDF$Price.Sensitivity, WestAirlineDF$Year.of.First.Flight, 
+                      WestAirlineDF$Flights.Per.Year, WestAirlineDF$Total.Freq.Flyer.Accts, WestAirlineDF$Type.of.Travel, WestAirlineDF$Loyalty,
+                      WestAirlineDF$Shopping.Amount.at.Airport, WestAirlineDF$Eating.and.Drinking.at.Airport, WestAirlineDF$Class, WestAirlineDF$Day.of.Month,
+                      WestAirlineDF$Scheduled.Departure.Hour, WestAirlineDF$Departure.Delay.in.Minutes, WestAirlineDF$Arrival.Delay.in.Minutes,
+                      WestAirlineDF$Flight.cancelled, WestAirlineDF$Flight.time.in.minutes, WestAirlineDF$Flight.Distance, WestAirlineDF$Arrival.Delay.greater.5.Mins)
+ruleX <- as(ruleDF1, "transactions")
+ruleX
+
+ruleset <- apriori(ruleX, parameter = list(support=0.30,confidence=0.30,maxtime=10, maxlen=30),appearance = list(default="lhs", rhs=("WestAirlineDF.Satisfaction=High")))
+ruleset <- sort(ruleset, decreasing = TRUE, by="lift")
+inspect(ruleset) 
+summary(WestAirlineDF)
+
+
+ruleDF2 <- data.frame(WestAirlineDF$Satisfaction, WestAirlineDF$Airline.Status, WestAirlineDF$Class, WestAirlineDF$Day.of.Month,
+                      WestAirlineDF$Flight.cancelled, WestAirlineDF$Arrival.Delay.greater.5.Mins)
+ruleX <- as(ruleDF2, "transactions")
+ruleX
+
+ruleset <- apriori(ruleX, parameter = list(support=0.30,confidence=0.30,maxtime=10, maxlen=30),appearance = list(default="lhs", rhs=("WestAirlineDF.Satisfaction=High")))
+ruleset <- sort(ruleset, decreasing = TRUE, by="lift")
+inspect(ruleset)
+summary(WestAirlineDF)
+
+#for ggmaps
+
+install.packages("sqldf")
+library(sqldf)
+
+install.packages("Rcpp") #Installing package Rcpp
+library(Rcpp) #Using the library
+
+install.packages("ggplot2") #Installing package ggplot2
+library(ggplot2) #Using the library
+
+install.packages("ggmap") #Installing package ggmap
+library(ggmap) #Using the library
+
+install.packages("maps") #Installing package maps
+library(maps) #Using the library
+
+install.packages("mapdata") #Installing package mapdata
+library(mapdata) #Using the library
+
+install.packages("mapproj") #Installing package mapproj
+library(mapproj) #Using the library
+
+
+View(dfAir1)
+summary(dfAir1)
+
+
+#Removing 9999 Values which were introduced for removing Na's
+sqldf(' select count("Arrival.Delay.in.Minutes") from dfAir1 where "Arrival.Delay.in.Minutes" = 9999')
+dfAirif<- dfAir1[dfAir1$Arrival.Delay.in.Minutes!=9999,]
+dfAir1<- dfAirif
+
+#extracting data form the dataset for destination and average arrival in delay
+statesDelay<- sqldf('select "Destination.State" as "stateName", avg("Arrival.Delay.in.Minutes") as "adih",avg("Satisfaction") as "AverageSatisfaction"  from dfAir1 group by "Destination.State"')
+
+#taking and merging default system data with our dataset
+area <- state.area
+latlong<- state.center
+stateName<- state.name
+mergeDf<- data.frame(stateName,latlong,area)
+
+fds<- merge(mergeDf,statesDelay, by='stateName')
+
+#using lower case for stateName
+fds$stateName<-tolower(fds$stateName)
+
+
+
+us <- map_data("state")
+
+
+#ggmaps
+mapplot<-ggplot(fds , aes(map_id=stateName))
+mapplot<- mapplot + geom_map(map = us,aes(fill=fds$AverageSatisfaction),color="white") + guides(fill=guide_legend(title="Average satisfaction"))
+mapplot<- mapplot + expand_limits(x= fds$x,y=fds$y)
+mapplot<- mapplot + geom_point(data=fds, aes(x=fds$x,y=fds$y,size=fds$adih), color ="white")+ scale_size(name="Avg Delay in Minutes")
+mapplot<- mapplot + geom_text( data=fds, hjust=0.5, vjust=-0.5, aes(x=x, y=y, label=toupper(stateName)), colour="gold", size=2 )
+mapplot<- mapplot + coord_map() + ggtitle("Average Delay in Minutes for West Airways Inc")+ xlab("Longitude") + ylab("Latitude")
+mapplot
+
+###########################################################################################################################################################################################################################
+
+
+#Going North
+
+
+cleanedDataset$Airline.Name <- trim(cleanedDataset$Partner.Name)
+GoingNorthAirlineDF <- cleanedDataset[which(cleanedDataset$Partner.Name=="GoingNorth Airlines Inc."),]
+View(GoingNorthAirlineDF)
+GoingNorthAirlineDF1<-GoingNorthAirlineDF
+dfAir1<-GoingNorthAirlineDF1
+str(GoingNorthAirlineDF)
+summary(GoingNorthAirlineDF)
+
+table(cleanedDataset$Partner.name)
+
+GoingNorthAirlineDF <- Bucketing(GoingNorthAirlineDF)
+View(GoingNorthAirlineDF)
+
+
+FullDataset <- Bucketing(cleanedDataset)
+View(FullDataset)
+
+GoingNorthdataset <- GoingNorthAirlineDF
+View(GoingNorthAirlineDF)
+
+
+# Linear Model For complete Data Set 
+#Find significant Columns
+linearModel2 <- lm(formula = as.numeric(Satisfaction) ~  Gender + Type.of.Travel + Class + Scheduled.Departure.Hour + Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes + Flight.cancelled + Flight.time.in.minutes + Flight.Distance + Arrival.Delay.greater.5.Mins, data = FullDataset)
+summary(linearModel2)
+linearModel2
+
+# Linear Model For Cheapseat Airline Data Set
+
+goingnorth<- GoingNorthAirlineDF[-16:-17] #Removing 2 factor data
+
+linearModel3 <- lm(formula = as.numeric(Satisfaction) ~  Gender + Type.of.Travel + Class + Scheduled.Departure.Hour + Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes + Flight.cancelled + Flight.time.in.minutes + Flight.Distance + Arrival.Delay.greater.5.Mins, data = goingnorth)
+summary(linearModel3)
+linearModel3
+
+
+# Observation from Linear Modelling 
+# Following columns play a Significant role in improving Customer Satisfaction for GoingNorth Airlines. 
+
+lm1 <- lm(formula= as.numeric(Satisfaction)~Arrival.Delay.greater.5.Mins , data = GoingNorthAirlineDF)
+summary(lm1)
+lm1
+
+lm2 <- lm(formula= as.numeric(Satisfaction)~Airline.Status , data = GoingNorthAirlineDF)
+summary(lm2)
+lm2
+
+lm3 <- lm(formula= as.numeric(Satisfaction)~ Class , data = GoingNorthAirlineDF)
+summary(lm3)
+lm3
+
+lm4 <- lm(formula= as.numeric(Satisfaction)~ Type.of.Travel , data = GoingNorthAirlineDF)
+summary(lm4)
+lm4
+
+lm5 <- lm(formula= as.numeric(Satisfaction)~Flight.cancelled , data = GoingNorthAirlineDF)
+summary(lm5)
+lm5
+
+# KSVM MODEL
+
+install.packages("kernlab")
+library(kernlab)
+
+createBucketsSurveya <- function(vec) {
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec >= 3] <- "Happy"
+  vBuckets[vec < 3] <- "unHappy"
+  return(vBuckets)
+}
+
+dfAir1<- GoingNorthAirlineDF1
+
+dfAir1$SatHuH <- createBucketsSurveya(as.numeric(dfAir1$Satisfaction))
+View(dfAir1)
+
+dfAirF <- subset(dfAir1, SatHuH == "Happy" | SatHuH == "unHappy")
+dfAirF
+table(dfAirF$SatHuH)
+
+dim(dfAirF)
+randIndex <- sample(1:dim(dfAirF)[1])
+head(randIndex)
+
+cutPoint2_3 <- floor(2 * dim(dfAirF)[1]/3)
+cutPoint2_3
+
+trainData <- dfAirF[randIndex[1:cutPoint2_3],]
+testData <- dfAirF[randIndex[(cutPoint2_3 + 1):dim(dfAir1)[1]],]
+
+dim(trainData)
+dim(testData)
+
+modelKs<-ksvm(SatHuH ~.,data=trainData, kernel="rbfdot", kpar="automatic", C=5, cross=3, prob.model =TRUE)
+View(modelKs)
+modelKs
+
+#Support Vector Machine object of class "ksvm" 
+
+#SV type: C-svc  (classification) 
+#parameter : cost C = 5 
+
+#Gaussian Radial Basis kernel function. 
+#Hyperparameter : sigma =  0.031122383261409 
+
+#Number of Support Vectors : 342 
+
+#Objective Function Value : -91.0315 
+#Training error : 0 
+#Cross validation error : 0.001957 
+#Probability model included. 
+
+modelKs1<-ksvm(SatHuH ~ Airline.Status+Age+ Type.of.Travel +Arrival.Delay.greater.5.Mins+Class+Flight.cancelled,data=trainData, kernel="rbfdot", kpar="automatic", C=5, cross=3, prob.model =TRUE)
+summary(modelKs1)
+modelKs1
+
+#Support Vector Machine object of class "ksvm" 
+
+#SV type: C-svc  (classification) 
+#parameter : cost C = 5 
+
+#Gaussian Radial Basis kernel function. 
+#Hyperparameter : sigma =  0.285737352188004 
+
+#Number of Support Vectors : 444 
+
+#Objective Function Value : -1746.719 
+#Training error : 0.107562 
+#Cross validation error : 0.116686 
+#Probability model included.  
+
+svmPred<-predict(modelKs,testData,type="votes")
+head(svmPred)
+
+svmPred1<-predict(modelKs1,testData,type="votes")
+compTable<- data.frame(testData$SatHuH,svmPred[2,])
+cm1<-table(compTable)
+cm1
+
+#svmPred.2...
+#testData.SatHuH   0   1
+#Happy   572   0
+#unHappy   0 196
+
+compTable1<- data.frame(testData$SatHuH,svmPred1[2,])
+#Confusion Matrix
+cm2<-table(compTable1)
+cm2
+#testData.SatHuH   0   1
+#Happy   564   8
+#unHappy  83 113
+
+#Confusion Matrix
+ES1<- cm1[1,2]+cm1[2,1]
+ES2<- cm2[1,2]+cm2[2,1]
+
+er1<- ES1/sum(cm1)*100
+er1
+# 0
+er2<- ES2/sum(cm2)*100
+er2
+#11.84896
+
+
+library(arules)
+library(arulesViz)
+
+ruleDF1 <- data.frame(GoingNorthAirlineDF$Satisfaction, GoingNorthAirlineDF$Airline.Status, GoingNorthAirlineDF$Age, GoingNorthAirlineDF$Gender, GoingNorthAirlineDF$Price.Sensitivity, GoingNorthAirlineDF$Year.of.First.Flight, 
+                      GoingNorthAirlineDF$Flights.Per.Year, GoingNorthAirlineDF$Total.Freq.Flyer.Accts, GoingNorthAirlineDF$Type.of.Travel, GoingNorthAirlineDF$Loyalty,
+                      GoingNorthAirlineDF$Shopping.Amount.at.Airport, GoingNorthAirlineDF$Eating.and.Drinking.at.Airport, GoingNorthAirlineDF$Class, GoingNorthAirlineDF$Day.of.Month,
+                      GoingNorthAirlineDF$Scheduled.Departure.Hour, GoingNorthAirlineDF$Departure.Delay.in.Minutes, GoingNorthAirlineDF$Arrival.Delay.in.Minutes,
+                      GoingNorthAirlineDF$Flight.cancelled, GoingNorthAirlineDF$Flight.time.in.minutes, GoingNorthAirlineDF$Flight.Distance, GoingNorthAirlineDF$Arrival.Delay.greater.5.Mins)
+ruleX <- as(ruleDF1, "transactions")
+ruleX
+
+ruleset <- apriori(ruleX, parameter = list(support=0.30,confidence=0.30,maxtime=10, maxlen=30),appearance = list(default="lhs", rhs=("GoingNorthAirlineDF.Satisfaction=High")))
+ruleset <- sort(ruleset, decreasing = TRUE, by="lift")
+inspect(ruleset) 
+summary(GoingNorthAirlineDF)
+
+
+ruleDF2 <- data.frame(GoingNorthAirlineDF$Satisfaction, GoingNorthAirlineDF$Airline.Status, GoingNorthAirlineDF$Class, GoingNorthAirlineDF$Day.of.Month,
+                      GoingNorthAirlineDF$Flight.cancelled, GoingNorthAirlineDF$Arrival.Delay.greater.5.Mins)
+ruleX <- as(ruleDF2, "transactions")
+ruleX
+
+ruleset <- apriori(ruleX, parameter = list(support=0.30,confidence=0.30,maxtime=10, maxlen=30),appearance = list(default="lhs", rhs=("GoingNorthAirlineDF.Satisfaction=High")))
+ruleset <- sort(ruleset, decreasing = TRUE, by="lift")
+inspect(ruleset)
+summary(GoingNorthAirlineDF)
+
+#for ggmaps
+
+install.packages("sqldf")
+library(sqldf)
+
+install.packages("Rcpp") #Installing package Rcpp
+library(Rcpp) #Using the library
+
+install.packages("ggplot2") #Installing package ggplot2
+library(ggplot2) #Using the library
+
+install.packages("ggmap") #Installing package ggmap
+library(ggmap) #Using the library
+
+install.packages("maps") #Installing package maps
+library(maps) #Using the library
+
+install.packages("mapdata") #Installing package mapdata
+library(mapdata) #Using the library
+
+install.packages("mapproj") #Installing package mapproj
+library(mapproj) #Using the library
+
+
+View(dfAir1)
+summary(dfAir1)
+
+
+#Removing 9999 Values which were introduced for removing Na's
+sqldf(' select count("Arrival.Delay.in.Minutes") from dfAir1 where "Arrival.Delay.in.Minutes" = 9999')
+dfAirif<- dfAir1[dfAir1$Arrival.Delay.in.Minutes!=9999,]
+dfAir1<- dfAirif
+
+#extracting data form the dataset for destination and average arrival in delay
+statesDelay<- sqldf('select "Destination.State" as "stateName", avg("Arrival.Delay.in.Minutes") as "adih",avg("Satisfaction") as "AverageSatisfaction"  from dfAir1 group by "Destination.State"')
+
+#taking and merging default system data with our dataset
+area <- state.area
+latlong<- state.center
+stateName<- state.name
+mergeDf<- data.frame(stateName,latlong,area)
+
+fds<- merge(mergeDf,statesDelay, by='stateName')
+
+#using lower case for stateName
+fds$stateName<-tolower(fds$stateName)
+
+
+
+us <- map_data("state")
+
+
+#ggmaps
+mapplot<-ggplot(fds , aes(map_id=stateName))
+mapplot<- mapplot + geom_map(map = us,aes(fill=fds$AverageSatisfaction),color="white") + guides(fill=guide_legend(title="Average satisfaction"))
+mapplot<- mapplot + expand_limits(x= fds$x,y=fds$y)
+mapplot<- mapplot + geom_point(data=fds, aes(x=fds$x,y=fds$y,size=fds$adih), color ="white")+ scale_size(name="Avg Delay in Minutes")
+mapplot<- mapplot + geom_text( data=fds, hjust=0.5, vjust=-0.5, aes(x=x, y=y, label=toupper(stateName)), colour="gold", size=2 )
+mapplot<- mapplot + coord_map() + ggtitle("Average Delay in Minutes for GoingNorth")+ xlab("Longitude") + ylab("Latitude")
+mapplot
+
+############################################################################################################################################
+```
+
+---------------------------Sanket Vichare's Code--------------------------------------------------------------------------------------------------------------------
+```{r}
+AirlineData <- read.csv("spring19survey.csv")
+View(AirlineData)
+
+#install the required packages
+install.packages("arules")
+install.packages("arulesViz")
+
+#run the installed packages
+library(arules)
+library(arulesViz)
+
+cleanedDataset <- AirlineData
+View(cleanedDataset)
+
+which(is.na(dataset$Departure.Delay.in.Minutes))
+
+cleanedDataset$Departure.Delay.in.Minutes <- ifelse(is.na(cleanedDataset$Departure.Delay.in.Minutes) & cleanedDataset$Flight.cancelled == "Yes", 9999, cleanedDataset$Departure.Delay.in.Minutes)
+cleanedDataset$Arrival.Delay.in.Minutes <- ifelse(is.na(cleanedDataset$Arrival.Delay.in.Minutes) & cleanedDataset$Flight.cancelled == "Yes", 9999, cleanedDataset$Arrival.Delay.in.Minutes)
+cleanedDataset$Flight.time.in.minutes <- ifelse(is.na(cleanedDataset$Flight.time.in.minutes) & cleanedDataset$Flight.cancelled == "Yes", 9999, cleanedDataset$Flight.time.in.minutes)
+cleanedDataset <- na.omit(cleanedDataset)
+
+str(cleanedDataset)
+
+summary(cleanedDataset)
+str(cleanedDataset)
+
+which(is.na(cleanedDataset$Departure.Delay.in.Minutes)) #Checking Na's
+
+cleanedDataset$Satisfaction <- as.numeric(as.character(cleanedDataset$Satisfaction)) #Changing to numeric
+View(cleanedDataset)
+
+
+#Applying Apriori rules on Cheapseats Airlines
+CheapseatsDF <- cleanedDataset[cleanedDataset$Partner.Name=="Cheapseats Airlines Inc.",]
+View(CheapseatsDF)
+
+#Creating a bucket for the attributes using quantiles
+createBuckets <- function(vec){
+  q <- quantile(vec, c(0.4, 0.6))
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec <= q[1]] <- "Low"
+  vBuckets[vec > q[2]] <- "High"
+  
+  return(vBuckets)
+}
+
+#Converting the given attributes to buckets by calling the createBuckets() function
+age <- createBuckets(CheapseatsDF$Age)
+View(age)
+
+departuredelay <- createBuckets(CheapseatsDF$Departure.Delay.in.Minutes)
+View(departuredelay)
+
+monthDay <- createBuckets(CheapseatsDF$Day.of.Month)
+View(monthDay)
+
+flightLength <- createBuckets(CheapseatsDF$Flight.Distance)
+View(flightLength)
+
+arrivalDelay <- createBuckets(CheapseatsDF$Arrival.Delay.in.Minutes)
+View(arrivalDelay)
+
+summary(cleanedDataset)
+
+ConvertSat <- function(vec) {
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec > 3] <- "High"
+  vBuckets[vec < 3] <- "Low"
+  return(vBuckets)
+}
+
+happyCust <- ConvertSat(CheapseatsDF$Satisfaction)
+View(happyCust)
+
+ruleDF <- data.frame(happyCust,age,departuredelay,arrivalDelay,monthDay,flightLength)
+View(ruleDF)
+
+flightSurveyX <- as(ruleDF,"transactions")
+View(flightSurveyX)
+
+ruleset <- apriori(flightSurveyX,
+                   parameter = list(support=0.1, confidence=.5),
+                   appearance = list(default="lhs",rhs=("happyCust=High")))
+summary(ruleset)
+inspect(ruleset) 
+
+# lhs                                           rhs              support   confidence lift     count
+# [1]  {age=Average}                         => {happyCust=High} 0.1251430 0.6545672  1.311969  4923
+# [2]  {monthDay=Average}                    => {happyCust=High} 0.1030275 0.5049838  1.012155  4053
+# [3]  {monthDay=High}                       => {happyCust=High} 0.1896591 0.5002011  1.002569  7461
+# [4]  {flightLength=High}                   => {happyCust=High} 0.2017082 0.5059296  1.014050  7935
+# [5]  {age=Low}                             => {happyCust=High} 0.2270775 0.5547069  1.111816  8933
+# [6]  {departuredelay=Low}                  => {happyCust=High} 0.2318564 0.5472819  1.096934  9121
+# [7]  {arrivalDelay=Low}                    => {happyCust=High} 0.2654109 0.5648975  1.132241 10441
+# [8]  {arrivalDelay=Low,monthDay=High}      => {happyCust=High} 0.1050103 0.5649617  1.132370  4131
+# [9]  {arrivalDelay=Low,flightLength=High}  => {happyCust=High} 0.1067643 0.5769231  1.156345  4200
+# [10] {arrivalDelay=Low,flightLength=Low}   => {happyCust=High} 0.1057729 0.5514180  1.105224  4161
+# [11] {age=Low,departuredelay=Low}          => {happyCust=High} 0.1066372 0.6200118  1.242709  4195
+# [12] {age=Low,arrivalDelay=Low}            => {happyCust=High} 0.1219146 0.6404059  1.283585  4796
+# [13] {arrivalDelay=Low,monthDay=Low}       => {happyCust=High} 0.1033326 0.5691683  1.140802  4065
+# [14] {departuredelay=Low,arrivalDelay=Low} => {happyCust=High} 0.1973614 0.5608206  1.124070  7764
+
+
+
+#Applying Apriori rules on West Airways
+WestDF <- cleanedDataset[cleanedDataset$Partner.Name=="West Airways Inc.",]
+View(WestDF)
+
+#Creating a bucket for the attributes using quantiles
+createBuckets <- function(vec){
+  q <- quantile(vec, c(0.4, 0.6))
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec <= q[1]] <- "Low"
+  vBuckets[vec > q[2]] <- "High"
+  
+  return(vBuckets)
+}
+
+#Converting the given attributes to buckets by calling the createBuckets() function
+age <- createBuckets(WestDF$Age)
+View(age)
+
+departuredelay <- createBuckets(WestDF$Departure.Delay.in.Minutes)
+View(departuredelay)
+
+monthDay <- createBuckets(WestDF$Day.of.Month)
+View(monthDay)
+
+flightLength <- createBuckets(WestDF$Flight.Distance)
+View(flightLength)
+
+arrivalDelay <- createBuckets(WestDF$Arrival.Delay.in.Minutes)
+View(arrivalDelay)
+
+summary(cleanedDataset)
+
+ConvertSat <- function(vec) {
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec > 3] <- "High"
+  vBuckets[vec < 3] <- "Low"
+  return(vBuckets)
+}
+
+happyCust <- ConvertSat(WestDF$Satisfaction)
+View(happyCust)
+
+ruleDF <- data.frame(happyCust,age,departuredelay,arrivalDelay,monthDay,flightLength)
+View(ruleDF)
+
+flightSurveyX <- as(ruleDF,"transactions")
+View(flightSurveyX)
+
+ruleset <- apriori(flightSurveyX,
+                   parameter = list(support=0.1, confidence=.5),
+                   appearance = list(default="lhs",rhs=("happyCust=High")))
+summary(ruleset)
+inspect(ruleset) 
+
+# lhs                             rhs             support   confidence      lift count
+# [1]  {}                     => {happyCust=High} 0.5691469  0.5691469 1.0000000  1461
+# [2]  {monthDay=Average}     => {happyCust=High} 0.1141410  0.5955285 1.0463529   293
+# [3]  {age=Average}          => {happyCust=High} 0.1347877  0.6878728 1.2086033   346
+# [4]  {flightLength=Average} => {happyCust=High} 0.1227113  0.5909944 1.0383864   315
+# [5]  {departuredelay=High}  => {happyCust=High} 0.1246591  0.5904059 1.0373525   320
+# [6]  {flightLength=High}    => {happyCust=High} 0.1928321  0.5749129 1.0101310   495
+# [7]  {arrivalDelay=High}    => {happyCust=High} 0.1963381  0.5448649 0.9573361   504
+# [8]  {monthDay=High}        => {happyCust=High} 0.2271134  0.5760870 1.0121939   583
+# [9]  {age=Low}              => {happyCust=High} 0.2707441  0.6550424 1.1509198   695
+# [10] {monthDay=Low}         => {happyCust=High} 0.2278925  0.5503293 0.9669372   585
+# [11] {flightLength=Low}     => {happyCust=High} 0.2536034  0.5549872 0.9751213   651
+# [12] {arrivalDelay=Low}     => {happyCust=High} 0.3728087  0.5828258 1.0240341   957
+# [13] {departuredelay=Low}   => {happyCust=High} 0.4444877  0.5634568 0.9900025  1141
+# [14] {departuredelay=Low,                                                           
+# flightLength=Average} => {happyCust=High} 0.1036229  0.6004515 1.0550027   266
+# [15] {departuredelay=High,                                                          
+# arrivalDelay=High}    => {happyCust=High} 0.1008960  0.5630435 0.9892763   259
+# [16] {arrivalDelay=Low,                                                             
+# flightLength=High}    => {happyCust=High} 0.1215427  0.5988484 1.0521860   312
+# [17] {departuredelay=Low,                                                           
+# flightLength=High}    => {happyCust=High} 0.1406311  0.5703002 1.0020264   361
+# [18] {age=Low,                                                                      
+# monthDay=High}        => {happyCust=High} 0.1024542  0.6368039 1.1188744   263
+# [19] {monthDay=High,                                                                
+# flightLength=Low}     => {happyCust=High} 0.1044020  0.5751073 1.0104726   268
+# [20] {arrivalDelay=Low,                                                             
+# monthDay=High}        => {happyCust=High} 0.1499805  0.5772114 1.0141695   385
+# [21] {departuredelay=Low,                                                           
+# monthDay=High}        => {happyCust=High} 0.1803662  0.5571600 0.9789390   463
+# [22] {age=Low,                                                                      
+# monthDay=Low}         => {happyCust=High} 0.1145306  0.6697039 1.1766802   294
+# [23] {age=Low,                                                                      
+# flightLength=Low}     => {happyCust=High} 0.1188157  0.6448203 1.1329594   305
+# [24] {age=Low,                                                                      
+# arrivalDelay=Low}     => {happyCust=High} 0.1916634  0.7028571 1.2349311   492
+# [25] {age=Low,                                                                      
+# departuredelay=Low}   => {happyCust=High} 0.2212700  0.6528736 1.1471091   568
+# [26] {arrivalDelay=Low,                                                             
+# monthDay=Low}         => {happyCust=High} 0.1484223  0.5594714 0.9830000   381
+# [27] {departuredelay=Low,                                                           
+# monthDay=Low}         => {happyCust=High} 0.1795871  0.5481570 0.9631204   461
+# [28] {arrivalDelay=Low,                                                             
+# flightLength=Low}     => {happyCust=High} 0.1636151  0.5592543 0.9826187   420
+# [29] {departuredelay=Low,                                                           
+# flightLength=Low}     => {happyCust=High} 0.2002337  0.5416228 0.9516397   514
+# [30] {departuredelay=Low,                                                           
+# arrivalDelay=Low}     => {happyCust=High} 0.3490456  0.5743590 1.0091578   896
+# [31] {departuredelay=Low,                                                           
+# arrivalDelay=Low,                                                             
+# flightLength=High}    => {happyCust=High} 0.1016751  0.5748899 1.0100905   261
+# [32] {departuredelay=Low,                                                           
+# arrivalDelay=Low,                                                             
+# monthDay=High}        => {happyCust=High} 0.1429684  0.5734375 1.0075387   367
+# [33] {age=Low,                                                                      
+# departuredelay=Low,                                                           
+# flightLength=Low}     => {happyCust=High} 0.1020647  0.6501241 1.1422782   262
+# [34] {age=Low,                                                                      
+# departuredelay=Low,                                                           
+# arrivalDelay=Low}     => {happyCust=High} 0.1776393  0.6898638 1.2121016   456
+# [35] {departuredelay=Low,                                                           
+# arrivalDelay=Low,                                                             
+# monthDay=Low}         => {happyCust=High} 0.1382937  0.5478395 0.9625626   355
+# [36] {departuredelay=Low,                                                           
+# arrivalDelay=Low,                                                             
+# flightLength=Low}     => {happyCust=High} 0.1620569  0.5583893 0.9810987   416
+
+
+
+#Applying Apriori rules on goingNorth Airways
+
+goingNorthDF <- cleanedDataset[cleanedDataset$Partner.Name=="GoingNorth Airlines Inc.",]
+View(goingNorthDF)
+
+#Creating a bucket for the attributes using quantiles
+createBuckets <- function(vec){
+  q <- quantile(vec, c(0.4, 0.6))
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec <= q[1]] <- "Low"
+  vBuckets[vec > q[2]] <- "High"
+  
+  return(vBuckets)
+}
+
+#Converting the given attributes to buckets by calling the createBuckets() function
+age <- createBuckets(goingNorthDF$Age)
+View(age)
+
+departuredelay <- createBuckets(goingNorthDF$Departure.Delay.in.Minutes)
+View(departuredelay)
+
+monthDay <- createBuckets(goingNorthDF$Day.of.Month)
+View(monthDay)
+
+flightLength <- createBuckets(goingNorthDF$Flight.Distance)
+View(flightLength)
+
+arrivalDelay <- createBuckets(goingNorthDF$Arrival.Delay.in.Minutes)
+View(arrivalDelay)
+
+summary(cleanedDataset)
+
+ConvertSat <- function(vec) {
+  vBuckets <- replicate(length(vec), "Average")
+  vBuckets[vec > 3] <- "High"
+  vBuckets[vec < 3] <- "Low"
+  return(vBuckets)
+}
+
+happyCust <- ConvertSat(goingNorthDF$Satisfaction)
+View(happyCust)
+
+ruleDF <- data.frame(happyCust,age,departuredelay,arrivalDelay,monthDay,flightLength)
+View(ruleDF)
+
+flightSurveyX <- as(ruleDF,"transactions")
+View(flightSurveyX)
+
+ruleset <- apriori(flightSurveyX,
+                   parameter = list(support=0.1, confidence=.5),
+                   appearance = list(default="lhs",rhs=("happyCust=High")))
+summary(ruleset)
+inspect(ruleset) 
+
+# lhs                                           rhs             support   confidence lift     count
+# [1] {age=Average}                         => {happyCust=High} 0.1194613 0.6152125  1.333540 275  
+# [2] {arrivalDelay=Low}                    => {happyCust=High} 0.2345786 0.5590062  1.211706 540  
+# [3] {departuredelay=Low}                  => {happyCust=High} 0.2593397 0.5168831  1.120400 597  
+# [4] {age=Low,arrivalDelay=Low}            => {happyCust=High} 0.1072980 0.6365979  1.379895 247  
+# [5] {age=Low,departuredelay=Low}          => {happyCust=High} 0.1185925 0.5711297  1.237985 273  
+# [6] {departuredelay=Low,flightLength=Low} => {happyCust=High} 0.1146829 0.5290581  1.146791 264  
+# [7] {departuredelay=Low,arrivalDelay=Low} => {happyCust=High} 0.1941790 0.5437956  1.178736 447  
+
+
+#Apriori rules were applied on goingNorth,West Airways and Cheapseats Airlines for determining the customer satisfaction based on their age,flight delays,flight length and day of the month flights were booked.
+#One thing common for all the flights was when the customers are of low and average age, they are giving higher customer ratings.
+#Simailarly,the customer satisfaction was high when the departure delay and arrival delay of the flights was less.
+#So, recommendations should be provided to increase the customer ratings for higher age groups.
+
+```
+
+---------------------------Chaitali Nautiyal's Code------------------------------------------------------------------------------------------------------------------
+```{r}
+AirlineData <- read.csv("spring19survey.csv")
+View(AirlineData)
+
+GoingNorthDF <- AirlineData[AirlineData$Partner.Name=="GoingNorth Airlines Inc.",]
+View(GoingNorthDF)
+
+WestAirDF <- AirlineData[AirlineData$Partner.Name=="West Airways Inc.",]
+View(WestAirDF)
+
+CheapSeat <- AirlineData[AirlineData$Partner.Name=="Cheapseats Airlines Inc.",]
+View(CheapSeat)
+
+
+GoingNorthDF$AgeBucket[(GoingNorthDF$Age> 60)]<- "High"
+GoingNorthDF$AgeBucket[(GoingNorthDF$Age<40)]<- "Low"
+GoingNorthDF$AgeBucket[(GoingNorthDF$Age>= 40 & GoingNorthDF$Age<=60)]<- "Average"
+
+
+WestAirDF$AgeBucket[(WestAirDF$Age> 60)]<- "High"
+WestAirDF$AgeBucket[(WestAirDF$Age<40)]<- "Low"
+WestAirDF$AgeBucket[(WestAirDF$Age>= 40 & WestAirDF$Age<=60)]<- "Average"
+
+
+CheapSeat$AgeBucket[(CheapSeat$Age> 60)]<- "High"
+CheapSeat$AgeBucket[(CheapSeat$Age<40)]<- "Low"
+CheapSeat$AgeBucket[(CheapSeat$Age>= 40 & CheapSeat$Age<=60)]<- "Average"
+
+
+View(GoingNorthDF)
+View(WestAirDF)
+View(CheapSeat)
+
+
+NorthAgeonSat <- table(GoingNorthDF$Satisfaction,GoingNorthDF$AgeBucket)
+NorthAgeonSat
+
+
+#     Average High Low
+# 1      21   18  14
+# 2     139  235 136
+# 3     222  153 302
+# 4     390   89 343
+# 5     144   18  78  
+
+
+prop.table(NorthAgeonSat)
+
+#        Average        High         Low
+# 1   0.009122502 0.007819288 0.006081668
+# 2   0.060382276 0.102085143 0.059079062
+# 3   0.096437880 0.066463944 0.131190269
+# 4   0.169417897 0.038662033 0.149000869
+# 5   0.062554301 0.007819288 0.033883579
+
+
+WestAgeonSat <- table(WestAirDF$Satisfaction,WestAirDF$AgeBucket)
+WestAgeonSat
+
+
+#    Average High Low
+# 1      17    8  12
+# 2     100  148 127
+# 3     234  235 230
+# 4     495  113 605
+# 5     140   18  90
+
+prop.table(WestAgeonSat)
+
+#         Average        High         Low
+#    1 0.006609642 0.003110420 0.004665630
+#    2 0.038880249 0.057542768 0.049377916
+#    3 0.090979782 0.091368585 0.089424572
+#    4 0.192457232 0.043934681 0.235225505
+#    5 0.054432348 0.006998445 0.034992224
+
+
+
+CheapseatAgeonSat <- table(CheapSeat$Satisfaction,CheapSeat$AgeBucket)
+CheapseatAgeonSat
+#     Average High  Low
+#   1     345  362  245
+#   2    2021 3478 2080
+#   3    3473 3206 4546
+#   4    7306 1574 7099
+#   5    2250  207 1249
+
+prop.table(CheapseatAgeonSat)
+#         Average        High         Low
+#    1 0.008747243 0.009178266 0.006211810
+#    2 0.051241094 0.088182348 0.052737000
+#    3 0.088055577 0.081285971 0.115260769
+#    4 0.185238711 0.039907710 0.179990365
+#    5 0.057047235 0.005248346 0.031667554
+
+
+
+
+# Lower customer satisfaction (1 & 2) is mostly given by people belonging to higher age (>60) 
+# This is true for both GoingNorth, WestAirways and CheapSeats
+# Thus, recommendations can be suggested to improve ratings for higher age group
+
+
+
+# Creating a scatter plot
+install.packages("ggplot2")
+library(ggplot2)
+
+#Plotting Age to Satisfaction for Going North
+
+
+GoingNorthGraph <-tapply(GoingNorthDF$Satisfaction, GoingNorthDF$Age,mean)
+GoingNorthData <-data.frame(customersatisfaction=GoingNorthGraph,age=row.names(GoingNorthGraph))
+GoingNorthData
+
+GoingNorthbar <- ggplot(GoingNorthData, aes(x=age,customersatisfaction, y=customersatisfaction))
+GoingNorthbar <- GoingNorthbar + geom_point(color = "Black", fill = "Grey")
+GoingNorthbar <- GoingNorthbar + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+GoingNorthbar <- GoingNorthbar + ggtitle("Age to Satisfaction for GoingNorth Airlines Inc.")
+GoingNorthbar <- GoingNorthbar + labs(x = "Age")
+GoingNorthbar <- GoingNorthbar + labs(y = "Satisfaction")
+GoingNorthbar
+
+
+#Plotting Age to Satisfaction for West Airways
+
+
+WestAirGraph <-tapply(WestAirDF$Satisfaction, WestAirDF$Age, mean)
+WestAirData <-data.frame(customersatisfaction=WestAirGraph,age=row.names(WestAirGraph))
+WestAirData
+
+WestAirbar <- ggplot(WestAirData, aes(x=age,customersatisfaction, y=customersatisfaction))
+WestAirbar <- WestAirbar + geom_point(color = "Black", fill = "Grey")
+WestAirbar <- WestAirbar + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+WestAirbar <- WestAirbar + ggtitle("Age to Satisfaction for West Airways Inc.")
+WestAirbar <- WestAirbar + labs(x = "Age")
+WestAirbar <- WestAirbar + labs(y = "Satisfaction")
+WestAirbar
+
+
+#Plotting Age to Satisfaction for Cheapset Airlines
+
+
+CheapseatGraph <-tapply(CheapSeat$Satisfaction, CheapSeat$Age, mean)
+CheapSetData <-data.frame(customersatisfaction=CheapseatGraph,age=row.names(CheapseatGraph))
+CheapSetData
+
+cheapSetbar <- ggplot(CheapSetData, aes(x=age,customersatisfaction, y=customersatisfaction))
+cheapSetbar <- cheapSetbar + geom_point(color = "Black", fill = "Grey")
+cheapSetbar <- cheapSetbar + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+cheapSetbar <- cheapSetbar + ggtitle("Age to Satisfaction for CheapSeats Airlines Inc.")
+cheapSetbar <- cheapSetbar + labs(x = "Age")
+cheapSetbar <- cheapSetbar + labs(y = "Satisfaction")
+cheapSetbar
+```
